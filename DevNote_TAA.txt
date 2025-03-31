@@ -1,0 +1,28 @@
+
+I want to get up to speed with TAA.
+
+Godot's TAA seems a little underdeveloped. This seems like a good oppertunity to sharpen my skills and do a bit of a rewrite.
+
+QUESTIONS:
+
+Jitter
+What sequence? Where is it applied?
+Halton(2, 3)
+E:\Development\godot\servers\rendering\renderer_scene_cull.cpp
+
+Motion Vectors
+Motion Vector support. Need full scene motion vectors. What is missing? How much of a pain will it be, especially for skinned animations?
+Godot is Forward+. Do they partial or full pre-pass? Can Velocity be output early?
+Jittered or not?
+Dilation?
+
+Masking
+Didn't see any kind of masing for driving reactivity or anything like that.
+
+Test Scenes
+What's a good sample with a spread of content?
+ - skinned characters
+ - vehicles
+ - alpha tested thin-detail geometry
+ - various light conditions
+
