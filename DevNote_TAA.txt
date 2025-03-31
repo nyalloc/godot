@@ -26,3 +26,6 @@ What's a good sample with a spread of content?
  - alpha tested thin-detail geometry
  - various light conditions
 
+Tooling
+Prefer to work in PIX so I'll need to see about a D3D12 enabled build.
+Any way to take advantage of a shader hot reload?

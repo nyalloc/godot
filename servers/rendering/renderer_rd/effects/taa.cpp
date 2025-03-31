@@ -37,7 +37,7 @@ using namespace RendererRD;
 
 TAA::TAA() {
 	Vector<String> taa_modes;
-	taa_modes.push_back("\n#define MODE_TAA_RESOLVE");
+	taa_modes.push_back("");
 	taa_shader.initialize(taa_modes);
 	shader_version = taa_shader.version_create();
 	pipeline = RD::get_singleton()->compute_pipeline_create(taa_shader.version_get_shader(shader_version, 0));
@@ -58,25 +58,13 @@ void TAA::resolve(RID p_frame, RID p_temp, RID p_depth, RID p_velocity, RID p_pr
 
 	RID default_sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 
-	TAAResolvePushConstant push_constant;
-	memset(&push_constant, 0, sizeof(TAAResolvePushConstant));
-	push_constant.resolution_width = p_resolution.width;
-	push_constant.resolution_height = p_resolution.height;
-	push_constant.disocclusion_threshold = 2.5f; // If velocity changes by less than this amount of texels we can retain the accumulation buffer.
-	push_constant.disocclusion_scale = 0.01f; // Scale the weight of this pixel calculated as (change in velocity - threshold) * scale.
-
 	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
 	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, pipeline);
 
 	RD::Uniform u_frame_source(RD::UNIFORM_TYPE_IMAGE, 0, { p_frame });
-	RD::Uniform u_depth(RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 1, { default_sampler, p_depth });
-	RD::Uniform u_velocity(RD::UNIFORM_TYPE_IMAGE, 2, { p_velocity });
-	RD::Uniform u_prev_velocity(RD::UNIFORM_TYPE_IMAGE, 3, { p_prev_velocity });
-	RD::Uniform u_history(RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 4, { default_sampler, p_history });
-	RD::Uniform u_frame_dest(RD::UNIFORM_TYPE_IMAGE, 5, { p_temp });
+	RD::Uniform u_frame_dest(RD::UNIFORM_TYPE_IMAGE, 1, { p_temp });
 
-	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 0, u_frame_source, u_depth, u_velocity, u_prev_velocity, u_history, u_frame_dest), 0);
-	RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(TAAResolvePushConstant));
+	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 0, u_frame_source,  u_frame_dest), 0);
 	RD::get_singleton()->compute_list_dispatch_threads(compute_list, p_resolution.width, p_resolution.height, 1);
 	RD::get_singleton()->compute_list_end();
 }
@@ -94,7 +82,6 @@ void TAA::process(Ref<RenderSceneBuffersRD> p_render_buffers, RD::DataFormat p_f
 
 		p_render_buffers->create_texture(SNAME("taa"), SNAME("history"), p_format, usage_bits);
 		p_render_buffers->create_texture(SNAME("taa"), SNAME("temp"), p_format, usage_bits);
-
 		p_render_buffers->create_texture(SNAME("taa"), SNAME("prev_velocity"), RD::DATA_FORMAT_R16G16_SFLOAT, usage_bits);
 
 		just_allocated = true;
