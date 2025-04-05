@@ -43,15 +43,15 @@
 /* HALTON SEQUENCE */
 
 #ifndef _3D_DISABLED
-static float get_halton_value(int p_index, int p_base) {
+static float halton(int p_index, int p_base) {
 	float f = 1;
 	float r = 0;
 	while (p_index > 0) {
 		f = f / static_cast<float>(p_base);
 		r = r + f * (p_index % p_base);
-		p_index = p_index / p_base;
+		p_index = (int)(floorf((float)(p_index) / (float)(p_base)));
 	}
-	return r * 2.0f - 1.0f;
+	return r;
 }
 #endif // _3D_DISABLED
 
@@ -2668,19 +2668,22 @@ void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_bu
 	Vector2 jitter;
 	float taa_frame_count = 0.0f;
 	if (p_jitter_phase_count > 0) {
-		uint32_t current_jitter_count = camera_jitter_array.size();
+		const uint32_t current_jitter_count = camera_jitter_array.size();
 		if (p_jitter_phase_count != current_jitter_count) {
 			// Resize the jitter array and fill it with the pre-computed Halton sequence.
 			camera_jitter_array.resize(p_jitter_phase_count);
 
 			for (uint32_t i = current_jitter_count; i < p_jitter_phase_count; i++) {
-				camera_jitter_array[i].x = get_halton_value(i, 2);
-				camera_jitter_array[i].y = get_halton_value(i, 3);
+				camera_jitter_array[i].x = halton((i % p_jitter_phase_count), 2) - 0.5f;
+				camera_jitter_array[i].y = halton((i % p_jitter_phase_count), 3) - 0.5f;
 			}
 		}
 
-		jitter = camera_jitter_array[RSG::rasterizer->get_frame_number() % p_jitter_phase_count] / p_viewport_size;
-		taa_frame_count = float(RSG::rasterizer->get_frame_number() % p_jitter_phase_count);
+		const uint32_t index = RSG::rasterizer->get_frame_number() % p_jitter_phase_count;
+		Vector2 jitterOffset = camera_jitter_array[index];
+		jitter.x = 2.0f * jitterOffset.x / (float)p_viewport_size.x;
+		jitter.y = -2.0f * jitterOffset.y / (float)p_viewport_size.y;
+		taa_frame_count = float(index);
 	}
 
 	RendererSceneRender::CameraData camera_data;

@@ -3,12 +3,20 @@ I want to get up to speed with TAA.
 
 Godot's TAA seems a little underdeveloped. This seems like a good oppertunity to sharpen my skills and do a bit of a rewrite.
 
+DEBUGGING / DEV MENU
+
+I'd like an on-screen imgui thing that I can use to switch between different TAA configs / permutations.
+There is an imgui plugin.
+I could add all the TAA debugging features to that, letting you pause time and render overlays etc.
+A DLSS-style accumulation debugger would be good which exaggerates motion vectors in order to find fucked up materials.
+
 QUESTIONS:
 
 Jitter
 What sequence? Where is it applied?
 Halton(2, 3)
 E:\Development\godot\servers\rendering\renderer_scene_cull.cpp
+Try R2.
 
 Motion Vectors
 Motion Vector support. Need full scene motion vectors. What is missing? How much of a pain will it be, especially for skinned animations?
@@ -31,3 +39,7 @@ What's a good sample with a spread of content?
 Tooling
 Prefer to work in PIX so I'll need to see about a D3D12 enabled build.
 Any way to take advantage of a shader hot reload?
+
+COMPARISON:
+
+Once this is far enough along, it'd be great to A/B test it against the vanilla TAA solution in terms of quality and performance.
