@@ -10,6 +10,10 @@ There is an imgui plugin.
 I could add all the TAA debugging features to that, letting you pause time and render overlays etc.
 A DLSS-style accumulation debugger would be good which exaggerates motion vectors in order to find fucked up materials.
 
+PERMUTATIONS
+Got a nasty bitmask hack for generating permutations.
+Need to look at mesh_storage.cpp for enabling shader permutations at runtime (see skeleton_shader).
+
 QUESTIONS:
 
 Jitter

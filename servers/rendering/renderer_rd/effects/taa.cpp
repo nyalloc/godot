@@ -35,9 +35,61 @@
 
 using namespace RendererRD;
 
-TAA::TAA() {
+enum TAAPermute : uint64_t
+{
+	TAA_NOP = 0,
+	TAA_RESOLVE = 1ull << 0,
+	TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB = 1ull << 1,
+	TAA_MASK_ALL = TAA_RESOLVE | TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB
+};
+
+const char* TAAPermuteDefine[] =
+{
+	"",
+	"\n#define TAA_RESOLVE",
+	"\n#define TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB",
+};
+
+String TAA::get_permute_defines(uint64_t mask)
+{
+	String result = TAAPermuteDefine[TAA_NOP];
+
+	for (size_t i = 0; i < std::size(TAAPermuteDefine); i++)
+	{
+		const uint64_t flag = 1ull << i;
+		if (mask & flag)
+		{
+			result += TAAPermuteDefine[i + 1];
+		}
+	}
+
+	return result;
+}
+
+void TAA::enable_resolve(bool enable)
+{
+	permute_flags |= TAA_RESOLVE;
+}
+
+void TAA::history_rectification_neighborhood_clamp_rgb(bool enable)
+{
+	permute_flags |= TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB;
+}
+
+TAA::TAA()
+	: permute_flags(0)
+{
 	Vector<String> taa_modes;
-	taa_modes.push_back("\n#define MODE_TAA_RESOLVE");
+
+	uint64_t submask = TAA_MASK_ALL;
+	int variant = 0;
+	while (submask != 0)
+	{
+		mask_to_variant[submask] = variant++;
+		taa_modes.push_back(get_permute_defines(submask));
+		submask = TAA_MASK_ALL & (submask - 1);
+	}
+
 	taa_shader.initialize(taa_modes);
 	shader_version = taa_shader.version_create();
 	pipeline = RD::get_singleton()->compute_pipeline_create(taa_shader.version_get_shader(shader_version, 0));
