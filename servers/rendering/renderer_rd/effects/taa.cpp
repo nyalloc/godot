@@ -92,7 +92,7 @@ void TAA::set_history_rectification_neighborhood_clamp_rgb(bool enable)
 	add_flag(permute_flags, TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB, enable);
 }
 
-void RendererRD::TAA::set_reprojection_nearest_velocity(bool enable)
+void TAA::set_reprojection_nearest_velocity(bool enable)
 {
 	add_flag(permute_flags, TAA_REPROJECTION_NEAREST_VELOCITY, enable);
 }
