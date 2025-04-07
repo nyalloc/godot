@@ -3,6 +3,16 @@ I want to get up to speed with TAA.
 
 Godot's TAA seems a little underdeveloped. This seems like a good oppertunity to sharpen my skills and do a bit of a rewrite.
 
+PLANNED FEATURES
+
+Resampling blur (Catmull-Rom, Sacht-Nehab)
+“RGB” and “YCoCg” AABB neighborhood clamping / clipping
+32-DOP
+16-DOP
+variance clipping
+R2 jitter sequence
+Depth based disocclusion https://www.cs.cmu.edu/afs/cs/academic/class/15869-f11/www/readings/akeley06_triseparation.pdf
+
 DEBUGGING / DEV MENU
 
 I'd like an on-screen imgui thing that I can use to switch between different TAA configs / permutations.
@@ -47,3 +57,23 @@ Any way to take advantage of a shader hot reload?
 COMPARISON:
 
 Once this is far enough along, it'd be great to A/B test it against the vanilla TAA solution in terms of quality and performance.
+
+TAA DIARY
+
+(Days are just steps. Not a real diary. It's just cute and will help to illustrate the inevitable cascade of solutions to problems caused by solutions to other problems caused by...)
+
+Day 1:
+Simple lerp between current color and previous. Looks good when it is stable, animated characters ghost a lot, camera movement turns everything to absolute mush.
+
+Day 2:
+Added motion vector reprojection. Looks a lot better now, but everything is ghosting, leaving massive trails.
+
+Day 3:
+Added history rectification, clamping history to the 3x3 neighborhood of the current frame. Much better!
+This change has introduced some temporal instability as small features are alternatingly added to and removed from the 3x3 neighborhood.
+Some edges are still pretty aliased. Might need to re-visit our reprojection - our aliased motion vectors are not getting along with our anti-aliased history. 
+Now that things are less garbage, we can see that everything looks pretty blurry, and really blurry under motion.
+
+Day 4:
+Updated reprojection to use dilated motion vectors. Didn't impact the areas I expected. Will keep an eye on it.
+

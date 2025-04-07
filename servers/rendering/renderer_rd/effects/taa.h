@@ -42,25 +42,35 @@ public:
 
 	void process(Ref<RenderSceneBuffersRD> p_render_buffers, RD::DataFormat p_format, float p_z_near, float p_z_far);
 
-	void enable_resolve(bool enable);
-	void history_rectification_neighborhood_clamp_rgb(bool enable);
+	void set_resolve(bool enable);
+	void set_history_rectification_neighborhood_clamp_rgb(bool enable);
+	void set_reprojection_nearest_velocity(bool enable);
 
 private:
+	void init_shader();
+	void init_permutations();
+
 	struct TAAResolvePushConstant {
 		float resolution_width;
 		float resolution_height;
 		float padding[2];
 	};
 
+	struct TAAPermutation
+	{
+		uint32_t version;
+		RID pipeline;
+		RID version_shader;
+	};
+
 	TaaResolveShaderRD taa_shader;
 	RID shader_version;
-	RID pipeline;
 	uint64_t permute_flags;
 	static String get_permute_defines(uint64_t mask);
 
 	void resolve(RID p_frame, RID p_temp, RID p_depth, RID p_velocity, RID p_prev_velocity, RID p_history, Size2 p_resolution, float p_z_near, float p_z_far);
 
-	HashMap<uint64_t, int> mask_to_variant;
+	HashMap<uint64_t, TAAPermutation> mask_to_permutation;
 };
 
 } // namespace RendererRD

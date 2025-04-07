@@ -37,10 +37,13 @@ using namespace RendererRD;
 
 enum TAAPermute : uint64_t
 {
-	TAA_NOP = 0,
-	TAA_RESOLVE = 1ull << 0,
+	TAA_NOP                                          = 0,
+	TAA_RESOLVE                                      = 1ull << 0,
 	TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB = 1ull << 1,
-	TAA_MASK_ALL = TAA_RESOLVE | TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB
+	TAA_REPROJECTION_NEAREST_VELOCITY                = 1ull << 2,
+	TAA_MASK_ALL = TAA_RESOLVE
+	             | TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB
+	             | TAA_REPROJECTION_NEAREST_VELOCITY
 };
 
 const char* TAAPermuteDefine[] =
@@ -48,6 +51,7 @@ const char* TAAPermuteDefine[] =
 	"",
 	"\n#define TAA_RESOLVE",
 	"\n#define TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB",
+	"\n#define TAA_REPROJECTION_NEAREST_VELOCITY",
 };
 
 String TAA::get_permute_defines(uint64_t mask)
@@ -66,33 +70,91 @@ String TAA::get_permute_defines(uint64_t mask)
 	return result;
 }
 
-void TAA::enable_resolve(bool enable)
+static void add_flag(uint64_t& flags, uint64_t flag, bool enable)
 {
-	permute_flags |= TAA_RESOLVE;
+	if (enable)
+	{
+		flags |= flag;
+	}
+	else
+	{
+		flags &= ~(flag);
+	}
 }
 
-void TAA::history_rectification_neighborhood_clamp_rgb(bool enable)
+void TAA::set_resolve(bool enable)
 {
-	permute_flags |= TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB;
+	add_flag(permute_flags, TAA_RESOLVE, enable);
+}
+
+void TAA::set_history_rectification_neighborhood_clamp_rgb(bool enable)
+{
+	add_flag(permute_flags, TAA_HISTORY_RECTIFICATION_NEIGHBORHOOD_CLAMP_RGB, enable);
+}
+
+void RendererRD::TAA::set_reprojection_nearest_velocity(bool enable)
+{
+	add_flag(permute_flags, TAA_REPROJECTION_NEAREST_VELOCITY, enable);
 }
 
 TAA::TAA()
 	: permute_flags(0)
 {
-	Vector<String> taa_modes;
+	init_shader();
+	init_permutations();
 
-	uint64_t submask = TAA_MASK_ALL;
-	int variant = 0;
-	while (submask != 0)
+	set_resolve(true);
+	set_history_rectification_neighborhood_clamp_rgb(true);
+	set_reprojection_nearest_velocity(true);
+}
+
+static bool is_valid_mask(uint64_t mask)
+{
+	if (!(mask & TAA_RESOLVE) && mask != 0)
 	{
-		mask_to_variant[submask] = variant++;
-		taa_modes.push_back(get_permute_defines(submask));
-		submask = TAA_MASK_ALL & (submask - 1);
+		return false;
 	}
 
+	return true;
+}
+
+void TAA::init_shader()
+{
+	Vector<String> taa_modes;
+	uint64_t submask = TAA_MASK_ALL;
+	while (submask != 0)
+	{
+		if (is_valid_mask(submask))
+		{
+			taa_modes.push_back(get_permute_defines(submask));
+		}
+		submask = TAA_MASK_ALL & (submask - 1);
+	}
+	taa_modes.push_back(get_permute_defines(submask));
 	taa_shader.initialize(taa_modes);
 	shader_version = taa_shader.version_create();
-	pipeline = RD::get_singleton()->compute_pipeline_create(taa_shader.version_get_shader(shader_version, 0));
+}
+
+void TAA::init_permutations()
+{
+	uint64_t submask = TAA_MASK_ALL;
+	uint32_t i = 0;
+	while (submask != 0)
+	{
+		if (is_valid_mask(submask))
+		{
+			TAAPermutation& shader = mask_to_permutation[submask];
+			shader.version = i;
+			shader.version_shader = taa_shader.version_get_shader(shader_version, i);
+			shader.pipeline = RD::get_singleton()->compute_pipeline_create(shader.version_shader);
+			++i;
+		}
+		submask = TAA_MASK_ALL & (submask - 1);
+	}
+	TAAPermutation& shader = mask_to_permutation[submask];
+	shader.version = i;
+	shader.version_shader = taa_shader.version_get_shader(shader_version, i);
+	shader.pipeline = RD::get_singleton()->compute_pipeline_create(shader.version_shader);
 }
 
 TAA::~TAA() {
@@ -116,7 +178,9 @@ void TAA::resolve(RID p_frame, RID p_temp, RID p_depth, RID p_velocity, RID p_pr
 	push_constant.resolution_height = p_resolution.height;
 
 	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
-	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, pipeline);
+
+	TAAPermutation& taa_permutation = mask_to_permutation[permute_flags];
+	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, taa_permutation.pipeline);
 
 	RD::Uniform u_frame_source(RD::UNIFORM_TYPE_IMAGE, 0, { p_frame });
 	RD::Uniform u_depth(RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 1, { default_sampler, p_depth });
